@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="//cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>
+    <script src="//cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+</head>
+<style>
+table, th, td {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 0.5px;
+}
+#sexRatio, #relationship{
+    width:30%;
+    height:30%;
+}
+</style>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <canvas id="sexRatio"></canvas>
+                <center><h4>Distribution of number of Males and Females</h4></center>
+            </div>
+            <div class="col-md-6">
+                <canvas id="relationship"></canvas>
+                <center><h4>Number of people in each Relationship Status</h4></center>
+            </div>
+        </div>
+        <br>
+        <div class="row">
+            <table id="myTable">
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Age</th>
+                        <th>Work Class</th>
+                        <th>FnlWgt</th>
+                        <th>Education</th>
+                        <th>Education Number</th>
+                        <th>Marital Status</th>
+                        <th>Occupation</th>
+                        <th>Relationship</th>
+                        <th>Race</th>
+                        <th>Sex</th>
+                        <th>Capital Gain</th>
+                        <th>Capital Loss</th>
+                        <th>Hours/Week</th>
+                        <th>Native Country</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if data %}
+                    {% for user in data %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ user.age }}</td>
+                        <td>{{ user.workclass }}</td>
+                        <td>{{ user.fnlwgt }}</td>
+                        <td>{{ user.education }}</td>
+                        <td>{{ user.education_num }}</td>
+                        <td>{{ user.marital_status }}</td>
+                        <td>{{ user.occupation }}</td>
+                        <td>{{ user.relationship }}</td>
+                        <td>{{ user.race }}</td>
+                        <td>{{ user.sex }}</td>
+                        <td>{{ user.capital_gain }}</td>
+                        <td>{{ user.capital_loss }}</td>
+                        <td>{{ user.hours_per_week }}</td>
+                        <td>{{ user.native_country }}</td>
+
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr role="row" class="odd">
+                        <td colspan="6" align="center"><h4>No result found</h4></td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        <div class="row">
+            {% if data.has_other_pages %}
+                <div class="col-md-3" id="" role="status" style="margin-top:30px">
+                    Showing {{ data.start_index }} to {{ data.end_index }} of {{ data.paginator.count }} entries
+                </div>
+                <div class="col-md-9">
+                    <ul class="pagination paging_simple_numbers margin-0">
+                        {% if data.has_previous %}
+                        <li><a class="paginate_button previous"
+                               href="?page={{ data.previous_page_number }}">Previous</a></li>
+                        {% else %}
+                        <li class="paginate_button previous disabled"><span>Previous</span></li>
+                        {% endif %}
+                        {% for i in data.paginator.page_range %}
+                        {% if data.number == i %}
+                        <li><a class="active">{{ i }}<span class="sr-only">(current)</span></a></li>
+                        {% else %}
+                            {% if forloop.counter < 20%}
+                                <li><a href="?page={{ i }}">{{ i }}</a></li>
+                            {% endif%}
+                        {% endif %}
+                        {% endfor %}
+                        {% if data.has_next %}
+                        <li><a class="paginate_button next"
+                               href="?page={{ data.next_page_number }}">Next</a></li>
+                        {% else %}
+                        <li class="paginate_button next disabled"><span>Next</span></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+        </div>
+    </div>
+<script>
+
+$(document).ready( function () {
+    //TO Remove filter from Columns Except Sex, RelationShip, Race
+    $('#myTable').dataTable( {searching: false, paging: false, info: false,
+    "aoColumnDefs": [{ "bSortable": false, "aTargets": [ 0,1,2,3,4,5,6,7,11,12,13,14] }]
+    });
+    // TO add pagination
+    $('.paging_nums').text($('.paging_nums').text().replace(/[<>]/g, '').replace(/of/g, 'to').replace(/Page/g, 'page'));
+});
+
+// Calling a endpoint to get graph data
+$.ajax({
+    type:'GET',
+    url:'/api/chart',
+    success: function(data){
+        sexChart(sex_labels=data.sex_labels, sex_data=data.sex_data)
+        relationshipChart(relationship_labels=data.relationship_labels, relationship_data=data.relationship_data)
+    }
+})
+
+//To get sex ratio chart
+function sexChart(sex_labels, sex_data){
+    var ctx = document.getElementById("sexRatio").getContext('2d');
+    var sexRatio = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: sex_labels,
+        datasets: [{
+            label: 'SEX Ratio',
+            data: sex_data,
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(54, 162, 235, 0.2)'
+            ],
+            borderColor: [
+                'rgba(255,99,132,1)',
+                'rgba(54, 162, 235, 1)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero:true
+                }
+            }]
+        }
+    }
+});
+}
+// TO get relationship Chart
+function relationshipChart(relationship_labels, relationship_data){
+    var ctx = document.getElementById("relationship").getContext('2d');
+    var relationship = new Chart(ctx, {
+    type: 'pie',
+    data: {
+        labels: relationship_labels,
+        datasets: [{
+            label: 'Relationship Ratio',
+            data: relationship_data,
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(54, 162, 235, 0.2)',
+                'rgba(255, 206, 86, 0.2)',
+                'rgba(75, 192, 192, 0.2)',
+                'rgba(153, 102, 255, 0.2)',
+                'rgba(255, 159, 64, 0.2)'
+            ],
+            borderColor: [
+                'rgba(255,99,132,1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero:true
+                }
+            }]
+        }
+    }
+});
+}
+
+</script>
+</body>
+</html>
